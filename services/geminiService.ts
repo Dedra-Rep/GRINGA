@@ -19,7 +19,9 @@ type TTSResponse = {
 };
 
 export class GeminiService {
-  private apiBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  private apiBaseUrl =
+  (import.meta as any).env?.VITE_API_BASE_URL?.replace(/\/$/, '') ||
+  'http://localhost:8080';
   private backendToken = import.meta.env.VITE_BACKEND_TOKEN as string | undefined;
 
   private getHeaders(): Record<string, string> {

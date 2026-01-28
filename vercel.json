@@ -1,12 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/health",
-      "destination": "https://gringa-backend-645941755023.us-central1.run.app/health"
-    },
-    {
       "source": "/api/:path*",
-      "destination": "https://gringa-backend-645941755023.us-central1.run.app/api/:path*"
+      "destination": "https://gringa-backend-xto6qszbka-uc.a.run.app/:path*"
     }
   ]
 }

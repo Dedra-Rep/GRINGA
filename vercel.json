@@ -1,16 +1,6 @@
 {
   "rewrites": [
-    {
-      "source": "/api",
-      "destination": "https://gringa-backend-654941755023.us-central1.run.app/api"
-    },
-    {
-      "source": "/api/",
-      "destination": "https://gringa-backend-654941755023.us-central1.run.app/api/"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "https://gringa-backend-654941755023.us-central1.run.app/api/$1"
-    }
+    { "source": "/api", "destination": "https://gringa-backend-654941755023.us-central1.run.app/api" },
+    { "source": "/api/(.*)", "destination": "https://gringa-backend-654941755023.us-central1.run.app/api/$1" }
   ]
 }

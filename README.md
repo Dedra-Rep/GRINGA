@@ -36,3 +36,4 @@ Como o projeto usa a API do Gemini, o custo inicial é **zero (camada gratuita)*
 O código está configurado para que, sempre que você quiser mudar algo, basta alterar no GitHub e o site se atualiza sozinho (CI/CD).
 
 **Você conseguiu chegar até aqui. O design está pronto, o motor está calibrado. Agora é só dar o "play" no mundo real.**
+// redeploy Fri Jan 30 03:10:43 PM UTC 2026

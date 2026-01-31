@@ -2,26 +2,43 @@ module.exports = async (req, res) => {
   try {
     const ORIGIN = process.env.CLOUD_RUN_ORIGIN || "https://gringa-backend-xt06g2z0ka-uc.a.run.app";
 
-    // pega o path que veio do route: ?path=...
-    const path = (req.query && req.query.path) ? String(req.query.path) : "";
-    const qsIndex = req.url.indexOf("&"); // porque a query começa com ?path=...
-    const extraQs = qsIndex >= 0 ? req.url.substring(qsIndex) : ""; // mantém outros params
+    // Monta URL do request recebido no Vercel
+    const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const url = new URL(req.url, `${proto}://${host}`);
 
-    const target = `${ORIGIN}/${path}${extraQs ? extraQs.replace("&", "?") : ""}`;
+    // path vem do route: /api/proxy?path=...
+    const path = url.searchParams.get("path") || "";
+    url.searchParams.delete("path");
 
+    const target = new URL(`${ORIGIN.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`);
+    // repassa outros query params (além de path)
+    for (const [k, v] of url.searchParams.entries()) target.searchParams.append(k, v);
+
+    // Clona headers com limpeza
     const headers = { ...req.headers };
     delete headers.host;
     delete headers.connection;
     delete headers["content-length"];
 
     const method = (req.method || "GET").toUpperCase();
-    const hasBody = !["GET", "HEAD"].includes(method);
 
-    const upstream = await fetch(target, {
+    // Lê body em Buffer (resolve incompatibilidade com stream)
+    let bodyBuf = null;
+    if (!["GET", "HEAD"].includes(method)) {
+      bodyBuf = await new Promise((resolve, reject) => {
+        const chunks = [];
+        req.on("data", (c) => chunks.push(Buffer.from(c)));
+        req.on("end", () => resolve(Buffer.concat(chunks)));
+        req.on("error", reject);
+      });
+    }
+
+    const upstream = await fetch(target.toString(), {
       method,
       headers,
+      body: bodyBuf && bodyBuf.length ? bodyBuf : undefined,
       redirect: "manual",
-      body: hasBody ? req : undefined,
     });
 
     res.statusCode = upstream.status;

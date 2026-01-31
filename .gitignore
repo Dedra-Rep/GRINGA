@@ -1,20 +1,19 @@
-# dependencies
-node_modules/
-backend/node_modules/
-
-# env
-.env
-.env.*
-!.env.example
-
-# build
-dist/
-build/
-.vite/
-coverage/
+# deps / build
+node_modules
+dist
+build
+.vite
+.cache
+.vercel
 
 # logs
 *.log
 
-# OS
-.DS_Store
+# backups / temp
+*.bak
+*.tmp
+*.swp
+*.swo
+*~ 
+*-env*.bak
+.vercel-*.txt

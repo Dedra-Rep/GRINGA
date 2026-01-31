@@ -1,56 +1,56 @@
-export const config = {
-  api: {
-    bodyParser: false,
-    externalResolver: true,
-  },
-};
-
-const ORIGIN = process.env.CLOUD_RUN_ORIGIN || "https://gringa-backend-xt06g2z0ka-uc.a.run.app";
+export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
   try {
-    const path = (req.query.path || []).join("/");
-    const qs = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
-    const target = `${ORIGIN}/${path}${qs}`;
+    // health check local do proxy
+    if (req.method === "GET" && (req.url === "/api/health" || req.url === "/health")) {
+      res.status(200).json({ ok: true, from: "vercel-function" });
+      return;
+    }
 
-    // Copia headers (removendo hop-by-hop)
+    const base = process.env.CLOUD_RUN_BASE_URL || "https://gringa-backend-xt06g2z0ka-uc.a.run.app";
+    const url = new URL(req.url, "http://localhost"); // só pra parsear path/query
+    const target = new URL(base);
+    target.pathname = url.pathname.replace(/^\/api/, "");
+    target.search = url.search;
+
+    // Copia headers (limpando os problemáticos)
     const headers = { ...req.headers };
     delete headers.host;
     delete headers.connection;
-    delete headers['content-length'];
+    delete headers["content-length"];
 
-    // Monta body (se não for GET/HEAD)
-    const method = req.method || "GET";
-    const hasBody = !["GET", "HEAD"].includes(method.toUpperCase());
+    const method = (req.method || "GET").toUpperCase();
 
-    const fetchOpts = {
+    // Lê body (quando não for GET/HEAD)
+    let body = undefined;
+    if (!["GET", "HEAD"].includes(method)) {
+      body = await new Promise((resolve, reject) => {
+        const chunks = [];
+        req.on("data", (c) => chunks.push(c));
+        req.on("end", () => resolve(Buffer.concat(chunks)));
+        req.on("error", reject);
+      });
+    }
+
+    const upstream = await fetch(target.toString(), {
       method,
       headers,
+      body,
       redirect: "manual",
-      body: hasBody ? req : undefined,
-    };
-
-    const upstream = await fetch(target, fetchOpts);
-
-    // Status
-    res.status(upstream.status);
-
-    // Headers de resposta (evita conflitos)
-    upstream.headers.forEach((value, key) => {
-      const k = key.toLowerCase();
-      if (k === "transfer-encoding") return;
-      if (k === "content-encoding") return; // evita gzip/br quebrando
-      res.setHeader(key, value);
     });
 
-    // Stream do body
+    // Repasse status + headers
+    res.status(upstream.status);
+    upstream.headers.forEach((v, k) => {
+      // evita headers que quebram
+      if (k.toLowerCase() === "transfer-encoding") return;
+      res.setHeader(k, v);
+    });
+
     const buf = Buffer.from(await upstream.arrayBuffer());
     res.send(buf);
-  } catch (err) {
-    res.status(502).json({
-      ok: false,
-      error: "proxy_failed",
-      message: err?.message || String(err),
-    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 }

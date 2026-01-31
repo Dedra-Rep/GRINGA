@@ -1,8 +1,5 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://gringa-backend-xt06g2z0ka-uc.a.run.app/api/$1"
-    }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/proxy?path=$1" }
   ]
 }

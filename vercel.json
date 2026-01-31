@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://gringa-backend-xto6qszbka-uc.a.run.app/$1"
+      "destination": "/api/$1"
     }
   ]
 }

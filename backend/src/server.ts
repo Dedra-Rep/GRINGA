@@ -4,10 +4,21 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const app = express();
 
+
+// Healthcheck (required for Vercel rewrite validation)
+app.get("/api", (_req, res) => res.status(200).json({ status: "ok", service: "gringa-backend" }));
+
 /**
  * CORS: deixe liberado por enquanto para destravar.
  * Depois a gente restringe para o domínio do Vercel.
  */
+
+/*__API_HEALTH_ALIASES__*/
+app.get(["/", "/health", "/api", "/api/health"], (_req, res) => {
+  return res.status(200).json({ status: "ok", service: "gringa-backend" });
+});
+/*__END_API_HEALTH_ALIASES__*/
+
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "1mb" }));
 
@@ -135,3 +146,6 @@ FORMATO EXATO:
 app.listen(PORT, () => {
   console.log(`gringa-backend listening on :${PORT}`);
 });
+
+app.get('/api', (_req, res) => res.status(200).json({ status: 'ok', service: 'gringa-backend' }));
+app.get('/api/health', (_req, res) => res.status(200).json({ ok: true }));

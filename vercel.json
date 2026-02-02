@@ -1,7 +1,5 @@
 {
-  "routes": [
-    { "src": "/API/(.*)", "dest": "/API/$1" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/" }
+  "rewrites": [
+    { "source": "/API/:path*", "destination": "/api/:path*" }
   ]
 }

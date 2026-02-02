@@ -1,8 +1,7 @@
 export default function handler(req, res) {
   return res.status(200).json({
-    ok: true,
-    service: "Mordomo.AI",
-    api: "API (uppercase)",
-    timestamp: new Date().toISOString(),
+    status: "ok",
+    service: "Mordomo API",
+    hint: "Use POST em /api/chat com JSON { message: \"...\" }"
   });
 }

@@ -1,28 +1,20 @@
 import OpenAI from "openai";
 
 export default async function handler(req, res) {
-  // CORS (importante para estabilidade no browser)
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
   try {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Método não permitido" });
     }
 
     const { message } = req.body || {};
+
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Mensagem inválida" });
     }
 
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({
-        error: "OPENAI_API_KEY não configurada no Vercel",
+        error: "OPENAI_API_KEY não configurada no servidor",
       });
     }
 
@@ -37,20 +29,27 @@ export default async function handler(req, res) {
         {
           role: "system",
           content:
-            "Você é o Mordomo.AI, um personal shopper especialista no Brasil. " +
-            "Responda em português do Brasil, de forma educada e clara. " +
-            "Quando recomendar produtos, traga 3 opções com prós e contras e finalize com uma sugestão.",
+            "Você é o Mordomo.AI, um personal shopper especialista. " +
+            "Responda sempre em português do Brasil. " +
+            "Quando recomendar produtos, traga 3 opções com prós e contras e finalize com uma recomendação clara.",
         },
-        { role: "user", content: message },
+        {
+          role: "user",
+          content: message,
+        },
       ],
     });
 
-    return res.status(200).json({
-      reply: completion.choices[0].message.content,
-    });
+    const reply =
+      completion?.choices?.[0]?.message?.content ||
+      "Não consegui gerar uma resposta agora.";
+
+    return res.status(200).json({ reply });
   } catch (error) {
+    console.error("Erro OpenAI:", error);
+
     return res.status(500).json({
-      error: "Erro interno no Mordomo",
+      error: "Erro interno ao processar a mensagem",
       details: String(error?.message || error),
     });
   }

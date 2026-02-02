@@ -1,22 +1,22 @@
 import OpenAI from "openai";
 
 export default async function handler(req, res) {
-  // CORS básico (opcional, mas ajuda caso o front use fetch com headers diferentes)
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  // 🔎 Health check para GET no navegador
+  if (req.method === "GET") {
+    return res.status(200).json({
+      status: "ok",
+      service: "Mordomo API",
+      method: "Use POST with { message }",
+    });
+  }
 
-  // Preflight
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método não permitido" });
   }
 
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Método não permitido" });
-    }
-
     const { message } = req.body || {};
+
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Mensagem ausente ou inválida" });
     }
@@ -27,11 +27,12 @@ export default async function handler(req, res) {
       });
     }
 
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     const completion = await client.chat.completions.create({
       model: "gpt-4o",
-      temperature: 0.7,
       messages: [
         {
           role: "system",
@@ -41,13 +42,13 @@ export default async function handler(req, res) {
         },
         { role: "user", content: message },
       ],
+      temperature: 0.7,
     });
 
-    const reply = completion?.choices?.[0]?.message?.content ?? "";
-
-    return res.status(200).json({ reply });
+    return res.status(200).json({
+      reply: completion.choices[0].message.content,
+    });
   } catch (error) {
-    console.error("API/chat error:", error);
     return res.status(500).json({
       error: "Erro ao chamar a OpenAI",
       details: String(error?.message || error),

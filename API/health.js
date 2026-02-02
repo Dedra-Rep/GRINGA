@@ -1,0 +1,8 @@
+export default function handler(req, res) {
+  return res.status(200).json({
+    ok: true,
+    service: "Mordomo.AI",
+    api: "API (uppercase)",
+    timestamp: new Date().toISOString(),
+  });
+}

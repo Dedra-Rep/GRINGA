@@ -1,68 +1,59 @@
-type ChatResponse = {
-  ok?: boolean;
-  reply?: string;
-  error?: string;
-};
+export type Market = "BR" | "US";
 
-type Recommendation = {
-  title: string;
-  why: string;
-  label?: string;
-  priceHint?: string;
-  link: string;
-};
+const env = (import.meta as any).env || {};
 
-type RecommendationsResponse = {
-  ok?: boolean;
-  market: "BR" | "US";
-  query: string;
-  recommendations: Recommendation[];
-  error?: string;
-};
+// Se você já usa alguma ENV no Vercel pro frontend, ele pega aqui.
+// Se não tiver, ele usa as rotas relativas /api/* (Vercel Functions).
+const API_BASE =
+  env.VITE_API_BASE_URL ||
+  env.VITE_API_BASE_API_URL ||
+  env.VITE_API_URL_BASE ||
+  "";
 
-const API_BASE = ""; // sempre relativo na Vercel
-
-/**
- * Envia mensagem para o endpoint /api/chat
- */
-export async function sendChatMessage(message: string): Promise<string> {
-  const resp = await fetch(`${API_BASE}/api/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ message })
-  });
-
-  const data: ChatResponse = await resp.json();
-
-  if (!resp.ok || data.error) {
-    throw new Error(data.error || "Erro ao comunicar com o chat");
-  }
-
-  return data.reply || "";
+function apiUrl(path: string) {
+  if (!API_BASE) return path;
+  return `${String(API_BASE).replace(/\/$/, "")}${path}`;
 }
 
-/**
- * Busca recomendações de produtos (3 cards)
- */
-export async function getRecommendations(
-  query: string,
-  market: "BR" | "US" = "BR"
-): Promise<Recommendation[]> {
-  const resp = await fetch(`${API_BASE}/api/recommendations`, {
+async function postJSON<T>(path: string, payload: any): Promise<T> {
+  const resp = await fetch(apiUrl(path), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query, market })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 
-  const data: RecommendationsResponse = await resp.json();
+  const data = await resp.json().catch(() => ({}));
 
-  if (!resp.ok || data.error) {
-    throw new Error(data.error || "Erro ao buscar recomendações");
+  if (!resp.ok) {
+    const msg =
+      (data && (data.error || data.message)) ||
+      `Erro HTTP ${resp.status} em ${path}`;
+    throw new Error(msg);
   }
 
-  return data.recommendations || [];
+  return data as T;
 }
+
+export const geminiService = {
+  chat(message: string) {
+    return postJSON<{ ok: boolean; reply?: string }>(`/api/chat`, { message });
+  },
+
+  recommendations(query: string, market: Market = "US") {
+    return postJSON<{
+      ok: boolean;
+      market: Market;
+      query: string;
+      recommendations: Array<{
+        title: string;
+        why: string;
+        label?: string;
+        priceHint?: string;
+        link: string;
+      }>;
+    }>(`/api/recommendations`, { query, market });
+  },
+};
+
+// Exporta dos dois jeitos (resolve qualquer import)
+export default geminiService;

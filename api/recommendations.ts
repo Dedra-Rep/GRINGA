@@ -7,23 +7,46 @@ const GEMINI_API_KEY =
 
 const AMAZON_TAG_BR = process.env.AMAZON_ASSOCIATES_TAG_BR || "mordomoai-20";
 
-// (Opcional) se quiser aplicar tracking do eBay depois, a gente liga aqui.
-const EBAY_CAMPAIGN_ID = process.env.EBAY_CAMPAIGN_ID || "";
-const EBAY_CUSTOM_ID = process.env.EBAY_CUSTOM_ID || "";
+// eBay tracking (US) — correto via rover
+const EBAY_ROVER_PREFIX = (process.env.EBAY_ROVER_PREFIX || "").trim(); // termina com mpre=
+const EBAY_CAMPAIGN_ID = (process.env.EBAY_CAMPAIGN_ID || "").trim();
 
 function buildAmazonSearchLink(query: string) {
   const q = encodeURIComponent(query.trim());
   return `https://www.amazon.com.br/s?k=${q}&tag=${encodeURIComponent(AMAZON_TAG_BR)}`;
 }
 
+function buildEbayTrackedLink(targetUrl: string) {
+  if (EBAY_ROVER_PREFIX) {
+    return `${EBAY_ROVER_PREFIX}${encodeURIComponent(targetUrl)}`;
+  }
+  if (EBAY_CAMPAIGN_ID) {
+    const prefix = `https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=${encodeURIComponent(
+      EBAY_CAMPAIGN_ID
+    )}&toolid=10001&mpre=`;
+    return `${prefix}${encodeURIComponent(targetUrl)}`;
+  }
+  return targetUrl; // sem tracking
+}
+
 function buildEbaySearchLink(query: string) {
   const q = encodeURIComponent(query.trim());
-  // Link simples (sem rover). Se você já tiver o rover/campaign pronto, eu adapto.
-  // Mantém funcionando agora.
-  let url = `https://www.ebay.com/sch/i.html?_nkw=${q}`;
-  if (EBAY_CUSTOM_ID) url += `&customid=${encodeURIComponent(EBAY_CUSTOM_ID)}`;
-  if (EBAY_CAMPAIGN_ID) url += `&campid=${encodeURIComponent(EBAY_CAMPAIGN_ID)}`;
-  return url;
+  const url = `https://www.ebay.com/sch/i.html?_nkw=${q}`;
+  return buildEbayTrackedLink(url);
+}
+
+// fallback sem Gemini (não quebra em produção)
+function fallbackRecommendations(query: string, market: "BR" | "US") {
+  const base = [
+    { title: `Top pick: ${query}`, why: "Mais recomendado para seu objetivo.", label: "Top pick" },
+    { title: `Best value: ${query}`, why: "Equilíbrio entre custo e qualidade.", label: "Best value" },
+    { title: `Premium: ${query}`, why: "Opções superiores (materiais/garantia).", label: "Premium" }
+  ];
+
+  return base.map((r) => {
+    const link = market === "BR" ? buildAmazonSearchLink(query) : buildEbaySearchLink(query);
+    return { ...r, priceHint: "", link };
+  });
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -35,25 +58,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Use POST." });
 
   try {
-    if (!GEMINI_API_KEY) {
-      return res.status(500).json({
-        error: "Missing Gemini API key",
-        hint: "Configure GEMINI_API_KEY (or GOOGLE_API_KEY) in Vercel Environment Variables."
-      });
-    }
-
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
-    // Aceita:
-    // { query: "..." }  ou { message: "..." } ou { prompt: "..." }
     const query: string = body?.query || body?.message || body?.prompt || "";
-
-    // Opcional: "market" para você controlar no frontend:
-    // "BR" -> Amazon BR / "US" -> eBay US (ou Amazon US depois)
-    const market: "BR" | "US" = (body?.market || "US").toUpperCase() === "BR" ? "BR" : "US";
+    const market: "BR" | "US" = (String(body?.market || "US").toUpperCase() === "BR") ? "BR" : "US";
 
     if (!query || typeof query !== "string") {
       return res.status(400).json({ error: "Missing query in request body." });
+    }
+
+    // Se não tiver chave do Gemini, não quebra: devolve fallback
+    if (!GEMINI_API_KEY) {
+      return res.status(200).json({
+        ok: true,
+        market,
+        query,
+        mode: "fallback",
+        recommendations: fallbackRecommendations(query, market)
+      });
     }
 
     const endpoint =
@@ -96,30 +118,38 @@ Rules:
     const data = await geminiResp.json();
 
     if (!geminiResp.ok) {
-      return res.status(geminiResp.status).json({
-        error: "Gemini request failed",
-        details: data
+      // falhou? devolve fallback, não quebra
+      return res.status(200).json({
+        ok: true,
+        market,
+        query,
+        mode: "fallback_due_to_gemini_error",
+        geminiStatus: geminiResp.status,
+        recommendations: fallbackRecommendations(query, market)
       });
     }
 
     const text =
-      data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("") ||
-      "";
+      data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("") || "";
 
-    // Tenta parsear o JSON retornado
     let parsed: any;
     try {
       parsed = JSON.parse(text);
     } catch {
-      // fallback robusto: tenta extrair o primeiro bloco JSON
       const m = text.match(/\{[\s\S]*\}/);
-      if (!m) throw new Error("Gemini did not return JSON");
+      if (!m) {
+        return res.status(200).json({
+          ok: true,
+          market,
+          query,
+          mode: "fallback_due_to_invalid_json",
+          recommendations: fallbackRecommendations(query, market)
+        });
+      }
       parsed = JSON.parse(m[0]);
     }
 
     const recs = Array.isArray(parsed?.recommendations) ? parsed.recommendations : [];
-
-    // Normaliza: garante 3 itens
     const normalized = recs.slice(0, 3).map((r: any) => {
       const title = String(r?.title || "").trim();
       const why = String(r?.why || "").trim();
@@ -127,8 +157,7 @@ Rules:
       const label = String(r?.label || "").trim();
       const priceHint = String(r?.priceHint || "").trim();
 
-      const link =
-        market === "BR" ? buildAmazonSearchLink(q) : buildEbaySearchLink(q);
+      const link = market === "BR" ? buildAmazonSearchLink(q) : buildEbaySearchLink(q);
 
       return {
         title: title || q,
@@ -139,11 +168,17 @@ Rules:
       };
     });
 
+    // garante 3 sempre
+    while (normalized.length < 3) {
+      normalized.push(...fallbackRecommendations(query, market).slice(normalized.length, 3));
+    }
+
     return res.status(200).json({
       ok: true,
       market,
       query,
-      recommendations: normalized
+      mode: "gemini",
+      recommendations: normalized.slice(0, 3)
     });
   } catch (err: any) {
     return res.status(500).json({

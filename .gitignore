@@ -1,20 +1,8 @@
-# deps / build
-node_modules
-dist
-build
-.vite
-.cache
-.vercel
-
-# logs
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
 *.log
-
-# backups / temp
-*.bak
-*.tmp
-*.swp
-*.swo
-*~ 
-*-env*.bak
-.vercel-*.txt
-.env*.local
+.env*
+!.env.example

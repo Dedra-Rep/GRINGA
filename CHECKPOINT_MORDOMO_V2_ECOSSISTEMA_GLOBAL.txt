@@ -1,0 +1,11 @@
+CHECKPOINT_MORDOMO_V2_ECOSSISTEMA_GLOBAL
+
+This checkpoint marks the successful transition of Mordomo.AI from a personal shopper / simple utility paradigm into a high-level, 30-year vision "Intelligent Care System" with a global footprint.
+
+Key Architecture and UI changes implemented:
+1. Removed all traditional Multi-Level Marketing or affiliate network concepts.
+2. Created the "Mordomo Trust Circle" (Círculo de Confiança Mordomo) recognition tiers.
+3. Designed the executive-level "Tranquility Index" (Índice de Tranquilidade) for life dashboard visualization.
+4. Integrated "Weekly Missions" (Missões da Semana), "Shared Life" (Vida Compartilhada), and "Trust Marketplace" (Marketplace de Confiança).
+5. Highlighted the core global metric: "Hours of tranquility returned to people" (Horas de tranquilidade devolvidas às pessoas).
+6. Protected all secure backend and auth code.

@@ -1,39 +1,76 @@
+# Mordomo.AI — Sistema de Cuidado Inteligente (V2)
 
-# 🤵 Mordomo.top - Manual de Implementação Comercial
+## 📌 Sobre o Projeto
+O **Mordomo.AI** é um ecossistema projetado sob a filosofia de Cuidado Inteligente. Ele atua de forma discreta, humana e proativa na vida do usuário, ajudando-o a lembrar, organizar e priorizar o que realmente importa (família, saúde, proteção financeira e sonhos), com conformidade estrita à LGPD e segurança absoluta desde a primeira linha de código.
 
-Este documento é o seu guia definitivo para tirar o Mordomo do papel e colocá-lo no mundo como um produto real.
+---
 
-## 🚀 Passo 1: O Cofre de Código (GitHub)
-Para que qualquer serviço de nuvem leia seu projeto, ele precisa estar no GitHub.
-1. Crie uma conta em [github.com](https://github.com).
-2. Crie um novo repositório chamado `mordomo-top`.
-3. Suba todos os arquivos deste projeto para lá.
-   * *Dica: Se você não sabe usar a linha de comando, pode arrastar os arquivos diretamente para a interface do GitHub no navegador.*
+## 🛠️ Como Executar Localmente
 
-## 🌐 Passo 2: O Lar do Mordomo (Hospedagem)
-Para um produto comercial rápido e moderno como este, recomendo a **Vercel** (é onde os melhores engenheiros do mundo hospedam apps React).
-1. Vá para [vercel.com](https://vercel.com) e conecte sua conta do GitHub.
-2. Clique em "Add New" > "Project".
-3. Selecione o repositório `mordomo-top`.
-4. **IMPORTANTE (A Chave do Sucesso):** Antes de clicar em "Deploy", procure a seção **Environment Variables**.
-   * Adicione uma variável com o nome: `API_KEY`
-   * No valor, cole a sua Chave da API do Google Gemini.
-5. Clique em **Deploy**. Em 1 minuto, seu site terá um link (ex: `mordomo-top.vercel.app`).
+### Pré-requisitos
+*   Node.js (v18 ou superior recomendado)
+*   NPM
 
-## 💎 Passo 3: Identidade Única (Domínio .top)
-Você mencionou o domínio `mordomo.top`.
-1. Compre o domínio em um provedor (como GoDaddy, Namecheap ou Registro.br).
-2. Na Vercel, vá em "Settings" > "Domains".
-3. Adicione `mordomo.top`.
-4. Siga as instruções de DNS que a Vercel fornecer (basicamente mudar um registro tipo A no seu provedor de domínio).
+### Passo a Passo
 
-## 🛡️ Passo 4: Escalabilidade e Custos (Google Cloud)
-Como o projeto usa a API do Gemini, o custo inicial é **zero (camada gratuita)**.
-* Se o tráfego crescer muito (milhares de acessos), você precisará ativar o faturamento no [Google AI Studio](https://aistudio.google.com/).
-* A configuração que fiz (`gemini-3-pro-preview`) é a mais inteligente e econômica para o nível "Elite".
+1. **Instalar Dependências:**
+   ```bash
+   npm install
+   ```
 
-## 🛠️ Manutenção Futura
-O código está configurado para que, sempre que você quiser mudar algo, basta alterar no GitHub e o site se atualiza sozinho (CI/CD).
+2. **Configurar as Variáveis de Ambiente:**
+   Copie o arquivo `.env.example` para `.env` na raiz do projeto:
+   ```bash
+   cp .env.example .env
+   ```
+   Abra o arquivo `.env` e configure sua chave de API do Gemini:
+   ```env
+   GEMINI_API_KEY=sua_chave_real_aqui
+   PORT=3000
+   NODE_ENV=development
+   ```
 
-**Você conseguiu chegar até aqui. O design está pronto, o motor está calibrado. Agora é só dar o "play" no mundo real.**
-// redeploy Fri Jan 30 03:10:43 PM UTC 2026
+3. **Iniciar Servidor de Desenvolvimento:**
+   Você pode iniciar em modo integrado (Express + Vite juntos na mesma porta, recomendado para simular a produção e desenvolvimento rápido) ou em modo duplo (processos separados):
+   
+   *   **Modo Integrado (Recomendado):**
+       ```bash
+       npm run dev
+       ```
+       *Inicia o servidor Express integrado na porta configurada (ou 3000 padrão), que cuida de carregar o middleware de desenvolvimento do Vite e servir a API.*
+
+   *   **Modo Separado/Duplo (Concorrente):**
+       ```bash
+       npm run dev:full
+       ```
+       *Inicia o Express em uma porta e o servidor Vite do frontend separadamente utilizando `concurrently`.*
+
+4. **Compilar para Produção (Build):**
+   ```bash
+   npm run build
+   ```
+
+---
+
+## 🔒 Diretrizes de Segurança e Publicação
+1. **Não Publicar Sem Autorização:** Este é um repositório interno e protegido de homologação da V2. Não faça deploys manuais ou alterações de rotas sem consentimento da gerência técnica.
+2. **Isolamento de Chaves:** Nunca adicione chaves de API secretas (como `GEMINI_API_KEY`) diretamente em arquivos do frontend ou no repositório de controle de versão.
+3. **Preservar Checkpoints:** Sempre siga o padrão de checkpoints definidos pela equipe principal de arquitetura para registrar as fases estáveis da aplicação.
+
+---
+
+## 📑 Documentação Interna (Pasta `/docs`)
+Para detalhes profundos da visão do produto, consulte os arquivos dentro de `/docs`:
+*   `docs/00-CONSTITUICAO-MORDOMO.md`: Missão, promessa e regra de ouro do sistema de cuidado.
+*   `docs/01-DESIGN-PRINCIPLES.md`: Os 11 mandamentos de design (no-anxiety, mobile-first, etc.).
+*   `docs/02-IA-PERSONALIDADE.md`: Diretrizes e termos permitidos/proibidos de linguagem do Mordomo.
+*   `docs/03-ARQUITETURA-MVP.md`: Detalhes de interface e a estrutura de módulos do MVP.
+*   `docs/04-ROADMAP.md`: Planejamento detalhado de 7 dias, 30 dias, 90 dias, 180 dias e 1 ano.
+*   `docs/05-REGRAS-DE-SEGURANCA.md`: Implementação de privacidade, LGPD e fluxo de dados.
+*   `docs/06-PROMPTS-OFICIAIS.md`: Catálogo de instruções de sistema e heurísticas lógicas de IA.
+*   `src/memory/MEMORIA.md`: Arquitetura cognitiva das 4 camadas de memória inteligível.
+
+---
+
+## 🏗️ Como Continuar o Desenvolvimento (Próximos Passos)
+O ambiente está 100% configurado com tipos, constantes e arquitetura prontos para o início da integração direta de persistência do Firebase e Auth. Para continuar, execute os prompts de implementação de banco de dados ou painéis descritos no cronograma do Roadmap de 30 dias.

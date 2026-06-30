@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // GLOBAL DEFAULT CATCH-ALL SAFETY NET
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // HELPER PRIMITIVES
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.size() < 100 && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isAdmin() {
+      // Primary admin email checking
+      return isAuthenticated() &&
+        (
+          (request.auth.token.email == "dedra.rep@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+
+    // ===============================================================
+    // 1. FOUNDER LEADS COLLECTION
+    // ===============================================================
+    // Open creation for anyone (guest or logged-in) to sign up, but restricted reading (Admins only).
+    match /founderLeads/{leadId} {
+      allow create: if isValidId(leadId) &&
+                    request.resource.data.keys().hasAll(['email', 'consentAccepted']) &&
+                    isValidEmail(request.resource.data.email) &&
+                    request.resource.data.consentAccepted == true &&
+                    (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() <= 100)) &&
+                    (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 50)) &&
+                    (!('locale' in request.resource.data) || (request.resource.data.locale is string && request.resource.data.locale.size() <= 10));
+      
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 2. USER PROFILES COLLECTION
+    // ===============================================================
+    // Stores settings for both authenticated (by uid) and guest (by sessionId) users.
+    match /userProfiles/{profileId} {
+      allow read: if isValidId(profileId) && (
+                    isOwner(profileId) || 
+                    isAdmin() || 
+                    // Guest user is allowed to read their own profile document via matching document ID (which is their sessionId)
+                    profileId == resource.data.id
+                  );
+
+      allow create, update: if isValidId(profileId) && (
+                    // Authenticated owner
+                    (isAuthenticated() && request.auth.uid == profileId) || 
+                    // Guest session owner (uses profileId as document ID)
+                    (!isAuthenticated() && request.resource.data.id == profileId)
+                  ) && (
+                    request.resource.data.keys().hasAll(['id', 'firstName']) &&
+                    request.resource.data.id is string && request.resource.data.id.size() <= 128 &&
+                    request.resource.data.firstName is string && request.resource.data.firstName.size() <= 100 &&
+                    (!('email' in request.resource.data) || (request.resource.data.email == "" || isValidEmail(request.resource.data.email))) &&
+                    (!('locale' in request.resource.data) || (request.resource.data.locale is string && request.resource.data.locale.size() <= 10)) &&
+                    (!('preferredTone' in request.resource.data) || (request.resource.data.preferredTone is string && request.resource.data.preferredTone.size() <= 50)) &&
+                    (!('mainGoal' in request.resource.data) || (request.resource.data.mainGoal is string && request.resource.data.mainGoal.size() <= 500)) &&
+                    (!('dailyCareFocus' in request.resource.data) || (request.resource.data.dailyCareFocus is list && request.resource.data.dailyCareFocus.size() <= 20))
+                  );
+
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 3. IMPORTANT THINGS COLLECTION
+    // ===============================================================
+    // Stores things the user doesn't want to forget. Both guest & logged-in supported.
+    match /importantThings/{thingId} {
+      // Client-side query security: enforces list only displays the user's or session's own things.
+      allow list: if (isAuthenticated() && resource.data.userId == request.auth.uid) ||
+                    (!isAuthenticated() && resource.data.sessionId != null);
+
+      allow get: if (isAuthenticated() && resource.data.userId == request.auth.uid) ||
+                  (!isAuthenticated() && resource.data.sessionId == resource.data.sessionId);
+
+      allow create, update: if isValidId(thingId) && (
+                    // If logged in, they must claim their userId
+                    (isAuthenticated() && request.resource.data.userId == request.auth.uid) ||
+                    // If guest, they must provide a sessionId
+                    (!isAuthenticated() && request.resource.data.sessionId is string && request.resource.data.sessionId.size() <= 128)
+                  ) && (
+                    request.resource.data.keys().hasAll(['id', 'type', 'title']) &&
+                    request.resource.data.id == thingId &&
+                    request.resource.data.title is string && request.resource.data.title.size() <= 200 &&
+                    request.resource.data.type is string && request.resource.data.type.size() <= 50 &&
+                    (!('description' in request.resource.data) || (request.resource.data.description is string && request.resource.data.description.size() <= 2000)) &&
+                    (!('priority' in request.resource.data) || (request.resource.data.priority in ['low', 'medium', 'high'])) &&
+                    (!('relatedPerson' in request.resource.data) || (request.resource.data.relatedPerson is string && request.resource.data.relatedPerson.size() <= 100))
+                  );
+
+      allow delete: if (isAuthenticated() && resource.data.userId == request.auth.uid) ||
+                    (!isAuthenticated() && resource.data.sessionId != null);
+    }
+
+    // Legacy or temporary test connection rule
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

@@ -1,0 +1,5 @@
+CHECKPOINT: CHECKPOINT_MORDOMO_V1_LEGACY_ANTES_V2_CUIDADO_INTELIGENTE
+Date: 2026-06-30
+Author: AI Coding Agent
+
+This file acts as a checkpoint confirming that the repository structure, code components, and assets from the legacy Personal Shopper version are preserved and backed up prior to the transition to Mordomo.AI - Sistema de Cuidado Inteligente (V2).
